@@ -1,0 +1,491 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>GPU Job Monitor 設計稿</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet" />
+<style>
+/* 數值與 tokens.json 一致 */
+:root {
+    --primary: #3b5bdb;
+    --primary-soft: #e8edff;
+    --secondary: #0ca678;
+    --success-soft: #e3f7ef;
+    --error: #e03131;
+    --error-soft: #fdecec;
+    --warning: #f08c00;
+    --warning-soft: #fff3e0;
+    --bg: #f5f6f8;
+    --surface: #ffffff;
+    --text: #1f2329;
+    --text-2: #5c6370;
+    --text-3: #8a919c;
+    --line: #e4e7ec;
+    --log-bg: #111418;
+    --log-text: #d7dae0;
+    --radius: 8px;
+    --font: Inter, 'Noto Sans TC', 'WenQuanYi Zen Hei', system-ui, sans-serif;
+    --mono: 'JetBrains Mono', Menlo, 'WenQuanYi Zen Hei Mono', monospace;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: #2b2f36; font-family: var(--font); color: var(--text); }
+
+/* ---------- 設計稿頁面外框（不在截圖內） ---------- */
+.board-header { max-width: 1520px; margin: 0 auto; padding: 40px 40px 8px; color: #e9ecf1; }
+.board-header h1 { margin: 0 0 8px; font-size: 28px; }
+.board-header p { margin: 0; color: #aab1bd; line-height: 1.7; max-width: 900px; }
+.board-header code { background: #3a3f48; padding: 1px 6px; border-radius: 4px; font-family: var(--mono); font-size: 13px; }
+.section { max-width: 1520px; margin: 0 auto; padding: 32px 40px; }
+.section h2 { color: #fff; font-size: 18px; margin: 0 0 4px; }
+.section .file { color: #8f98a6; font-family: var(--mono); font-size: 13px; margin-bottom: 12px; }
+.notes { color: #c7ccd4; font-size: 14px; line-height: 1.7; margin: 0 0 16px; padding-left: 20px; max-width: 1100px; }
+.frame { background: var(--bg); overflow: hidden; position: relative; box-shadow: 0 10px 40px rgba(0,0,0,.35); }
+.f-desktop { width: 1440px; height: 900px; }
+.f-tablet { width: 1024px; height: 768px; }
+.f-wide { width: 1440px; height: 560px; }
+
+/* ---------- App 外殼 ---------- */
+.appbar { height: 64px; background: var(--primary); color: #fff; display: flex; align-items: center; padding: 0 32px; gap: 16px; }
+.appbar .logo { width: 28px; height: 28px; border-radius: 6px; background: rgba(255,255,255,.18); display: grid; place-items: center; font-weight: 700; font-size: 13px; }
+.appbar .title { font-size: 19px; font-weight: 600; flex: 1; }
+.appbar .lang { display: flex; align-items: center; gap: 6px; font-size: 14px; opacity: .92; }
+.page { padding: 28px 32px; }
+.page-title { display: flex; align-items: baseline; gap: 12px; margin-bottom: 20px; }
+.page-title h1 { margin: 0; font-size: 24px; font-weight: 600; }
+.muted { color: var(--text-2); }
+.small { font-size: 13px; }
+.card { background: var(--surface); border-radius: var(--radius); border: 1px solid var(--line); }
+
+/* ---------- 表單元件 ---------- */
+.toolbar { display: flex; gap: 12px; align-items: center; padding: 16px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.field { height: 40px; border: 1px solid #cfd4dc; border-radius: 6px; background: #fff; display: flex; align-items: center; padding: 0 12px; gap: 8px; font-size: 14px; color: var(--text); position: relative; }
+.field .label { position: absolute; top: -9px; left: 9px; background: #fff; padding: 0 4px; font-size: 12px; color: var(--text-2); }
+.field.placeholder { color: var(--text-3); }
+.field .caret { margin-left: auto; color: var(--text-3); font-size: 11px; }
+.field.focus { border: 2px solid var(--primary); padding: 0 11px; }
+.btn { height: 36px; padding: 0 16px; border-radius: 6px; font-size: 14px; font-weight: 600; display: inline-flex; align-items: center; gap: 8px; border: 0; font-family: var(--font); letter-spacing: .2px; }
+.btn.contained { background: var(--primary); color: #fff; }
+.btn.danger { background: var(--error); color: #fff; }
+.btn.outlined { background: #fff; color: var(--primary); border: 1px solid #b7c4f5; }
+.btn.outlined-danger { background: #fff; color: var(--error); border: 1px solid #f2b8b8; }
+.btn.text { background: transparent; color: var(--primary); }
+.icon { width: 18px; height: 18px; display: inline-block; }
+
+/* ---------- 狀態 chip ---------- */
+.chip { display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px; border-radius: 16px; font-size: 12.5px; font-weight: 500; white-space: nowrap; }
+.chip .dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.s-RUNNING { background: var(--primary-soft); color: var(--primary); }
+.s-PENDING { background: #eef0f3; color: var(--text-2); }
+.s-STOPPING { background: var(--warning-soft); color: #b86a00; }
+.s-STOPPED { background: #eef0f3; color: var(--text-2); }
+.s-SUCCEEDED { background: var(--success-soft); color: #08875f; }
+.s-FAILED { background: var(--error-soft); color: var(--error); }
+.filter-chip { height: 32px; border-radius: 16px; border: 1px solid #cfd4dc; padding: 0 12px; display: inline-flex; align-items: center; font-size: 13px; gap: 6px; background: #fff; }
+.filter-chip.on { background: var(--primary-soft); border-color: var(--primary); color: var(--primary); font-weight: 500; }
+
+/* ---------- 表格 ---------- */
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th { text-align: left; font-weight: 600; color: var(--text-2); font-size: 13px; padding: 12px 16px; border-bottom: 1px solid var(--line); background: #fafbfc; white-space: nowrap; }
+th .sort { color: var(--primary); margin-left: 4px; }
+td { padding: 0 16px; height: 48px; border-bottom: 1px solid #eef0f3; white-space: nowrap; }
+td.name { max-width: 380px; overflow: hidden; text-overflow: ellipsis; }
+td.name a { color: var(--primary); text-decoration: none; font-weight: 500; }
+td.mono { font-family: var(--mono); font-size: 13px; }
+tr.hover td { background: #f6f8ff; }
+.none { color: var(--text-3); }
+.table-footer { display: flex; justify-content: space-between; align-items: center; padding: 10px 16px; font-size: 13px; color: var(--text-2); }
+.pager { display: flex; gap: 6px; align-items: center; }
+.pager span { min-width: 32px; height: 32px; display: grid; place-items: center; border-radius: 6px; }
+.pager .cur { background: var(--primary); color: #fff; font-weight: 600; }
+.live { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-2); }
+.live .pulse { width: 8px; height: 8px; border-radius: 50%; background: var(--secondary); box-shadow: 0 0 0 4px rgba(12,166,120,.18); }
+
+/* ---------- 狀態畫面 ---------- */
+.skeleton { background: linear-gradient(90deg, #eceef2 0%, #f5f6f8 50%, #eceef2 100%); border-radius: 4px; height: 14px; }
+.empty { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 10px; padding: 40px; height: 100%; }
+.empty .art { width: 72px; height: 72px; border-radius: 50%; display: grid; place-items: center; margin-bottom: 6px; }
+.empty h3 { margin: 0; font-size: 17px; font-weight: 600; }
+.empty p { margin: 0 0 8px; color: var(--text-2); font-size: 14px; max-width: 320px; line-height: 1.6; }
+
+/* ---------- 詳情頁 ---------- */
+.crumb { font-size: 13px; color: var(--text-2); margin-bottom: 10px; }
+.crumb a { color: var(--primary); text-decoration: none; }
+.detail-head { display: flex; align-items: center; gap: 14px; margin-bottom: 20px; }
+.detail-head h1 { margin: 0; font-size: 24px; font-weight: 600; }
+.detail-head .spacer { flex: 1; }
+.tabs { display: flex; gap: 28px; border-bottom: 1px solid var(--line); margin-bottom: 20px; }
+.tabs span { padding: 12px 2px; font-size: 14px; font-weight: 500; color: var(--text-2); }
+.tabs .on { color: var(--primary); border-bottom: 2px solid var(--primary); }
+.grid { display: grid; grid-template-columns: 380px 1fr; gap: 20px; }
+.info { padding: 20px; }
+.info h3, .chart-card h3 { margin: 0 0 16px; font-size: 15px; font-weight: 600; }
+.kv { display: grid; grid-template-columns: 96px 1fr; row-gap: 14px; font-size: 14px; }
+.kv dt { color: var(--text-2); }
+.kv dd { margin: 0; word-break: break-all; }
+.desc { white-space: pre-wrap; background: #f7f8fa; border-radius: 6px; padding: 10px 12px; font-size: 13.5px; line-height: 1.6; }
+.chart-card { padding: 20px; }
+.chart-head { display: flex; align-items: center; margin-bottom: 8px; }
+.chart-head h3 { margin: 0; flex: 1; }
+.seg { display: inline-flex; border: 1px solid #cfd4dc; border-radius: 6px; overflow: hidden; }
+.seg span { padding: 6px 14px; font-size: 13px; border-left: 1px solid #cfd4dc; }
+.seg span:first-child { border-left: 0; }
+.seg .on { background: var(--primary-soft); color: var(--primary); font-weight: 600; }
+.legend { display: flex; gap: 18px; font-size: 13px; color: var(--text-2); margin: 6px 0 8px; flex-wrap: wrap; }
+.legend i { display: inline-block; width: 12px; height: 3px; border-radius: 2px; margin-right: 6px; vertical-align: middle; }
+
+/* ---------- Log ---------- */
+.log-wrap { position: relative; }
+.log-toolbar { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--line); }
+.log { background: var(--log-bg); color: var(--log-text); font-family: var(--mono); font-size: 13px; line-height: 21px; padding: 12px 0; height: 560px; overflow: hidden; border-radius: 0 0 var(--radius) var(--radius); }
+.log .ln { display: flex; padding: 0 16px; white-space: pre; }
+.log .no { color: #4b525d; width: 64px; flex: none; text-align: right; padding-right: 16px; user-select: none; }
+.log .lv-INFO { color: #69db7c; }
+.log .lv-DEBUG { color: #7b8494; }
+.log .lv-WARN { color: #ffd43b; }
+.log .lv-ERROR { color: #ff8787; }
+.log .trunc { color: #7b8494; }
+.banner { display: flex; align-items: center; gap: 10px; padding: 10px 16px; font-size: 13.5px; }
+.banner.warn { background: var(--warning-soft); color: #8a4f00; }
+.jump { position: absolute; right: 28px; bottom: 24px; background: var(--primary); color: #fff; border-radius: 20px; padding: 10px 18px; font-size: 13.5px; font-weight: 600; box-shadow: 0 6px 18px rgba(0,0,0,.35); display: flex; align-items: center; gap: 8px; }
+
+/* ---------- Dialog / Snackbar ---------- */
+.scrim { position: absolute; inset: 0; background: rgba(17,20,24,.48); display: grid; place-items: center; }
+.dialog { width: 440px; background: #fff; border-radius: 12px; box-shadow: 0 24px 60px rgba(0,0,0,.3); }
+.dialog .d-body { padding: 24px 24px 8px; }
+.dialog h2 { color: var(--text); margin: 0 0 12px; font-size: 19px; font-weight: 600; }
+.dialog p { margin: 0 0 12px; color: var(--text-2); font-size: 14px; line-height: 1.7; }
+.dialog .target { background: #f7f8fa; border-radius: 6px; padding: 10px 12px; font-size: 13.5px; display: flex; gap: 10px; align-items: center; }
+.dialog .d-actions { display: flex; justify-content: flex-end; gap: 8px; padding: 16px 24px 20px; }
+.snack { position: absolute; left: 50%; bottom: 28px; transform: translateX(-50%); background: #fff; border-left: 4px solid var(--error); border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,.18); padding: 14px 18px; display: flex; gap: 12px; align-items: flex-start; width: 520px; font-size: 14px; }
+.snack b { display: block; margin-bottom: 2px; }
+.snack .x { margin-left: auto; color: var(--text-3); }
+.split { display: grid; grid-template-columns: 1fr 1fr; gap: 0; height: 100%; }
+.split > div { position: relative; overflow: hidden; border-right: 1px solid #d0d4da; }
+.tag { position: absolute; top: 12px; left: 12px; background: #1f2329; color: #fff; font-size: 12px; padding: 4px 10px; border-radius: 4px; z-index: 5; }
+</style>
+</head>
+<body>
+
+<header class="board-header">
+    <h1>GPU Job Monitor 設計稿</h1>
+    <p>
+        共 7 個畫面，每個畫面下方的 PNG 是同一張圖的匯出版本。顏色、圓角、字型等設計參數見 <code>tokens.json</code>，
+        <code>src/theme.ts</code> 已套用。畫面上的資料只是示意，請以 API 實際回傳為準。設計稿沒畫到的細節請自行判斷，並在 README 說明。
+    </p>
+</header>
+
+<!-- ================================================================ 01 -->
+<section class="section">
+    <h2>01 Job 列表</h2>
+    <div class="file">01-job-list.png · 1440 × 900</div>
+    <ul class="notes">
+        <li>篩選條件（關鍵字、狀態多選、節點、排序、頁碼）要反映在 URL。</li>
+        <li>名稱過長時截斷並以 tooltip 顯示全名；節點為 null 時顯示「未排程」。</li>
+        <li>右上角顯示自動更新狀態；分頁切到背景時暫停更新。</li>
+        <li>資料約 10,000 筆。分頁或無限捲動皆可，請在 ADR 說明選擇。</li>
+    </ul>
+    <div class="frame f-desktop" id="s01">
+        <div class="appbar"><div class="logo">G</div><div class="title">GPU Job 監控</div><div class="lang">🌐 繁體中文 ▾</div></div>
+        <div class="page">
+            <div class="page-title"><h1>Job 列表</h1><span class="muted small">共 10,000 筆</span><span style="flex:1"></span><span class="live"><span class="pulse"></span>每 5 秒自動更新 · 3 秒前</span></div>
+            <div class="card">
+                <div class="toolbar">
+                    <div class="field placeholder" style="width:340px">🔍 搜尋名稱或擁有者</div>
+                    <span class="filter-chip on">執行中 ✕</span>
+                    <span class="filter-chip on">失敗 ✕</span>
+                    <span class="filter-chip">＋ 狀態</span>
+                    <div class="field" style="width:200px"><span class="label">節點</span>全部節點<span class="caret">▼</span></div>
+                    <span style="flex:1"></span>
+                    <button class="btn text">清除篩選</button>
+                </div>
+                <table id="list-table">
+                    <thead><tr><th>名稱</th><th>狀態</th><th>節點</th><th>GPU</th><th>擁有者</th><th>建立時間<span class="sort">↓</span></th></tr></thead>
+                    <tbody></tbody>
+                </table>
+                <div class="table-footer">
+                    <span>每頁 50 筆 ▾</span>
+                    <div class="pager"><span>‹</span><span class="cur">1</span><span>2</span><span>3</span><span>…</span><span>83</span><span>›</span><span style="margin-left:8px">1–50 / 4,512</span></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ================================================================ 02 -->
+<section class="section">
+    <h2>02 列表狀態：載入中、無資料、錯誤</h2>
+    <div class="file">02-job-list-states.png · 1440 × 560</div>
+    <ul class="notes">
+        <li>載入中用骨架列，不要整頁轉圈；換頁或改篩選時保留舊資料並在表格上方顯示細進度條。</li>
+        <li>無資料要區分「完全沒有 Job」與「篩選後沒有結果」，後者提供清除篩選。</li>
+        <li>錯誤訊息給使用者看得懂的文字，不要直接顯示例外內容；提供重試。</li>
+    </ul>
+    <div class="frame f-wide" id="s02">
+        <div class="split" style="grid-template-columns:1fr 1fr 1fr">
+            <div style="padding:24px">
+                <div class="tag">載入中</div>
+                <div class="card" style="margin-top:28px">
+                    <div style="height:3px;background:var(--primary-soft)"><div style="width:40%;height:3px;background:var(--primary)"></div></div>
+                    <table><thead><tr><th>名稱</th><th>狀態</th><th>節點</th></tr></thead><tbody id="skeleton-rows"></tbody></table>
+                </div>
+            </div>
+            <div style="padding:24px">
+                <div class="tag">篩選後無資料</div>
+                <div class="card" style="margin-top:28px;height:440px">
+                    <div class="empty">
+                        <div class="art" style="background:var(--primary-soft)"><svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#3b5bdb" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></div>
+                        <h3>沒有符合條件的 Job</h3>
+                        <p>目前的篩選條件：關鍵字「llama-70b」、狀態「執行中」。試著放寬條件。</p>
+                        <button class="btn outlined">清除篩選</button>
+                    </div>
+                </div>
+            </div>
+            <div style="padding:24px;border-right:0">
+                <div class="tag">載入失敗</div>
+                <div class="card" style="margin-top:28px;height:440px">
+                    <div class="empty">
+                        <div class="art" style="background:var(--error-soft)"><svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#e03131" stroke-width="2"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/></svg></div>
+                        <h3>無法載入 Job 列表</h3>
+                        <p>伺服器暫時沒有回應，請稍後再試。若持續發生，請聯絡系統管理員。</p>
+                        <button class="btn contained">重試</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ================================================================ 03 -->
+<section class="section">
+    <h2>03 Job 詳情</h2>
+    <div class="file">03-job-detail.png · 1440 × 900</div>
+    <ul class="notes">
+        <li>「停止」只在 PENDING、RUNNING 時可按；其他狀態隱藏或 disable。</li>
+        <li>描述是使用者輸入的純文字，保留換行，不解析 HTML。</li>
+        <li>圖表每張 GPU 一條線，可切換 15 分鐘／1 小時／6 小時；缺值處斷線，不要畫成 0。</li>
+    </ul>
+    <div class="frame f-desktop" id="s03"></div>
+</section>
+
+<!-- ================================================================ 04 -->
+<section class="section">
+    <h2>04 詳情頁部分失敗</h2>
+    <div class="file">04-job-detail-partial.png · 1440 × 900</div>
+    <ul class="notes">
+        <li>metrics 服務失敗時，只有圖表區塊顯示錯誤，基本資訊與停止按鈕照常可用。</li>
+        <li>PENDING 的 Job 沒有資料點，圖表區塊顯示「Job 開始執行後才會有資料」。</li>
+    </ul>
+    <div class="frame f-desktop" id="s04"></div>
+</section>
+
+<!-- ================================================================ 05 -->
+<section class="section">
+    <h2>05 即時 Log</h2>
+    <div class="file">05-job-logs.png · 1440 × 900</div>
+    <ul class="notes">
+        <li>預設自動捲到最新；使用者往上捲即暫停，右下角出現「回到最新」並顯示累積的新行數。</li>
+        <li>連線中斷時在上方顯示提示並自動重連，恢復後提示消失，log 不重複、不遺漏。</li>
+        <li>ANSI 色碼轉成顏色或去除；超長的行截斷並可展開。log 量可達數十萬行。</li>
+    </ul>
+    <div class="frame f-desktop" id="s05"></div>
+</section>
+
+<!-- ================================================================ 06 -->
+<section class="section">
+    <h2>06 停止 Job：確認與失敗</h2>
+    <div class="file">06-stop-confirm.png · 1440 × 900</div>
+    <ul class="notes">
+        <li>確認後狀態立即顯示為「停止中」，送出期間按鈕顯示載入中且不可重複點擊。</li>
+        <li>失敗時狀態還原，並以通知顯示原因；成功後由輪詢更新為「已停止」。</li>
+    </ul>
+    <div class="frame f-desktop" id="s06a"></div>
+    <div class="file" style="margin-top:28px">06-stop-failed.png · 1440 × 900</div>
+    <div class="frame f-desktop" id="s06b"></div>
+</section>
+
+<!-- ================================================================ 07 -->
+<section class="section">
+    <h2>07 平板寬度（1024px）</h2>
+    <div class="file">07-tablet.png · 1024 × 768</div>
+    <ul class="notes">
+        <li>篩選列換行；表格隱藏「擁有者」，建立時間改為相對時間。</li>
+        <li>詳情頁的基本資訊與圖表改為上下排列（未畫出，請比照處理）。</li>
+    </ul>
+    <div class="frame f-tablet" id="s07">
+        <div class="appbar" style="padding:0 20px"><div class="logo">G</div><div class="title">GPU Job 監控</div><div class="lang">🌐 繁體中文 ▾</div></div>
+        <div class="page" style="padding:20px">
+            <div class="page-title"><h1>Job 列表</h1><span class="muted small">共 10,000 筆</span><span style="flex:1"></span><span class="live"><span class="pulse"></span>3 秒前</span></div>
+            <div class="card">
+                <div class="toolbar">
+                    <div class="field placeholder" style="flex:1;min-width:300px">🔍 搜尋名稱或擁有者</div>
+                    <div class="field" style="width:180px"><span class="label">節點</span>全部節點<span class="caret">▼</span></div>
+                    <div style="width:100%;display:flex;gap:8px;align-items:center">
+                        <span class="filter-chip on">執行中 ✕</span><span class="filter-chip">＋ 狀態</span><span style="flex:1"></span><button class="btn text">清除篩選</button>
+                    </div>
+                </div>
+                <table id="tablet-table">
+                    <thead><tr><th>名稱</th><th>狀態</th><th>節點</th><th>GPU</th><th>建立<span class="sort">↓</span></th></tr></thead>
+                    <tbody></tbody>
+                </table>
+                <div class="table-footer"><span>每頁 50 筆 ▾</span><div class="pager"><span>‹</span><span class="cur">1</span><span>2</span><span>›</span></div></div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<script>
+const ROWS = [
+    ['llama3-finetune-00003', 'RUNNING', 'gpu-node-01', 4, 'bob', '2026-11-11 11:08'],
+    ['qwen3-inference-00012', 'RUNNING', 'gpu-node-03', 2, 'chen.wei', '2026-11-11 11:01'],
+    ['resnet50-eval-00019', 'FAILED', 'gpu-node-05', 1, 'alice', '2026-11-11 10:55'],
+    ['中文任務名稱-1301', 'RUNNING', '實驗室 機櫃 B 🔥', 2, 'lin.yuting', '2026-11-11 10:49'],
+    ['sdxl-benchmark-00027-with-an-extremely-long-name-that-nobody-expected-to-see…', 'RUNNING', 'gpu-node-02', 8, 'tanaka', '2026-11-11 10:41'],
+    ['whisper-distill-00031', 'FAILED', 'gpu-node-04', 1, 'nguyen.van.a', '2026-11-11 10:36'],
+    ['gemma-pretrain-00034', 'RUNNING', null, 4, 'kim.minji', '2026-11-11 10:30'],
+    ['bert-finetune-00040', 'RUNNING', 'gpu-node-01', 2, 'alice', '2026-11-11 10:24'],
+    ['mistral-eval-00046', 'FAILED', 'gpu-node-07', 1, 'bob', '2026-11-11 10:17'],
+    ['llama3-inference-00051', 'RUNNING', 'gpu-node-03', 4, 'chen.wei', '2026-11-11 10:11'],
+    ['qwen3-distill-00058', 'RUNNING', 'gpu-node-02', 2, 'tanaka', '2026-11-11 10:03'],
+    ['resnet50-benchmark-00063', 'RUNNING', 'gpu-node-05', 1, 'lin.yuting', '2026-11-11 09:58'],
+    ['sdxl-finetune-00069', 'FAILED', 'gpu-node-06', 2, 'kim.minji', '2026-11-11 09:51'],
+];
+const LABEL = { PENDING: '等待中', RUNNING: '執行中', STOPPING: '停止中', STOPPED: '已停止', SUCCEEDED: '已完成', FAILED: '失敗' };
+const chip = s => `<span class="chip s-${s}"><span class="dot"></span>${LABEL[s]}</span>`;
+const node = n => (n ? n : '<span class="none">未排程</span>');
+
+document.querySelector('#list-table tbody').innerHTML = ROWS.slice(0, 11).map(
+    (r, i) => `<tr class="${i === 3 ? 'hover' : ''}"><td class="name"><a>${r[0]}</a></td><td>${chip(r[1])}</td><td>${node(r[2])}</td><td>${r[3]}</td><td>${r[4]}</td><td class="mono">${r[5]}</td></tr>`
+).join('');
+const REL = ['3 分鐘前', '10 分鐘前', '16 分鐘前', '22 分鐘前', '30 分鐘前', '35 分鐘前', '41 分鐘前', '47 分鐘前', '54 分鐘前', '1 小時前', '1 小時前'];
+document.querySelector('#tablet-table tbody').innerHTML = ROWS.slice(0, 7).map(
+    (r, i) => `<tr><td class="name" style="max-width:300px"><a>${r[0]}</a></td><td>${chip(r[1])}</td><td>${node(r[2])}</td><td>${r[3]}</td><td>${REL[i]}</td></tr>`
+).join('');
+document.getElementById('skeleton-rows').innerHTML = Array.from({ length: 8 }, (_, i) =>
+    `<tr><td><div class="skeleton" style="width:${60 + ((i * 37) % 30)}%"></div></td><td><div class="skeleton" style="width:56px;height:22px;border-radius:12px"></div></td><td><div class="skeleton" style="width:70%"></div></td></tr>`
+).join('');
+
+// ---- 共用：詳情頁 ----
+const COLORS = ['#3b5bdb', '#0ca678', '#f08c00', '#ae3ec9'];
+function chart(w, h) {
+    let seed = 7;
+    const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+    const pad = { l: 40, r: 10, t: 10, b: 26 };
+    const iw = w - pad.l - pad.r, ih = h - pad.t - pad.b;
+    let svg = `<svg width="${w}" height="${h}" font-family="Inter, sans-serif" font-size="11" fill="#8a919c">`;
+    [0, 25, 50, 75, 100].forEach(v => {
+        const y = pad.t + ih - (v / 100) * ih;
+        svg += `<line x1="${pad.l}" x2="${w - pad.r}" y1="${y}" y2="${y}" stroke="#eef0f3"/><text x="${pad.l - 8}" y="${y + 4}" text-anchor="end">${v}%</text>`;
+    });
+    ['11:00', '11:03', '11:06', '11:09', '11:12', '11:15'].forEach((t, i) => {
+        svg += `<text x="${pad.l + (i / 5) * iw}" y="${h - 6}" text-anchor="middle">${t}</text>`;
+    });
+    COLORS.forEach((c, g) => {
+        let d = '', v = 55 + g * 8, pen = false;
+        for (let i = 0; i <= 90; i++) {
+            v = Math.max(8, Math.min(98, v + (rnd() - 0.5) * 14));
+            const gap = (g === 1 && i > 38 && i < 44) || (g === 2 && i > 70 && i < 74);
+            if (gap) { pen = false; continue; }
+            const x = pad.l + (i / 90) * iw, y = pad.t + ih - (v / 100) * ih;
+            d += `${pen ? 'L' : 'M'}${x.toFixed(1)},${y.toFixed(1)}`;
+            pen = true;
+        }
+        svg += `<path d="${d}" fill="none" stroke="${c}" stroke-width="1.8" stroke-linejoin="round"/>`;
+    });
+    // 缺值標示
+    svg += `<rect x="${pad.l + (38 / 90) * iw}" y="${pad.t}" width="${(6 / 90) * iw}" height="${ih}" fill="#8a919c" opacity=".08"/>`;
+    return svg + '</svg>';
+}
+function detail({ status = 'RUNNING', chartState = 'ok', tab = 'overview', stopping = false } = {}) {
+    const stopBtn = status === 'RUNNING' || status === 'PENDING'
+        ? `<button class="btn outlined-danger">${stopping ? '<span style="width:14px;height:14px;border:2px solid #f2b8b8;border-top-color:#e03131;border-radius:50%;display:inline-block"></span> 停止中…' : '■ 停止 Job'}</button>`
+        : '';
+    let chartBody;
+    if (chartState === 'ok') {
+        chartBody = `<div class="legend">${COLORS.map((c, i) => `<span><i style="background:${c}"></i>GPU ${i}</span>`).join('')}<span style="margin-left:auto">灰色區間：資料缺漏</span></div>${chart(920, 380)}`;
+    } else {
+        chartBody = `<div class="empty" style="height:400px"><div class="art" style="background:var(--warning-soft)"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#f08c00" stroke-width="2"><path d="M3 3v18h18"/><path d="m7 15 4-4 3 3 5-6"/></svg></div><h3>GPU 使用率暫時無法取得</h3><p>監控服務沒有回應，Job 本身不受影響。</p><button class="btn outlined">重試</button></div>`;
+    }
+    const overview = `
+        <div class="grid">
+            <div class="card info">
+                <h3>基本資訊</h3>
+                <dl class="kv">
+                    <dt>ID</dt><dd class="mono" style="font-family:var(--mono);font-size:13px">2095791122068779011 <span style="color:var(--primary);font-family:var(--font)">複製</span></dd>
+                    <dt>節點</dt><dd>gpu-node-01 · H100</dd>
+                    <dt>GPU 數</dt><dd>4</dd>
+                    <dt>擁有者</dt><dd>bob</dd>
+                    <dt>建立時間</dt><dd>2026-11-11 11:08:02</dd>
+                    <dt>開始時間</dt><dd>2026-11-11 11:08:32</dd>
+                    <dt>已執行</dt><dd>2 小時 14 分</dd>
+                    <dt>描述</dt><dd><div class="desc">Fine-tune on internal dataset v3
+lr=3e-5, batch=32, warmup: 500 steps
+&lt;b&gt;請勿停止&lt;/b&gt;</div></dd>
+                </dl>
+            </div>
+            <div class="card chart-card">
+                <div class="chart-head"><h3>GPU 使用率</h3><div class="seg"><span class="on">15 分鐘</span><span>1 小時</span><span>6 小時</span></div></div>
+                ${chartBody}
+            </div>
+        </div>`;
+    return `
+        <div class="appbar"><div class="logo">G</div><div class="title">GPU Job 監控</div><div class="lang">🌐 繁體中文 ▾</div></div>
+        <div class="page">
+            <div class="crumb"><a>Job 列表</a> / llama3-finetune-00003</div>
+            <div class="detail-head"><h1>llama3-finetune-00003</h1>${chip(stopping ? 'STOPPING' : status)}<span class="spacer"></span>${stopBtn}</div>
+            <div class="tabs"><span class="${tab === 'overview' ? 'on' : ''}">總覽</span><span class="${tab === 'logs' ? 'on' : ''}">即時 Log</span></div>
+            ${tab === 'overview' ? overview : '<div id="log-slot"></div>'}
+        </div>`;
+}
+document.getElementById('s03').innerHTML = detail();
+document.getElementById('s04').innerHTML = detail({ chartState: 'error' });
+
+// ---- 05 Log ----
+document.getElementById('s05').innerHTML = detail({ tab: 'logs' });
+const LV = ['INFO', 'INFO', 'INFO', 'DEBUG', 'WARN', 'ERROR'];
+let lines = '';
+for (let i = 0; i < 26; i++) {
+    const n = 48210 + i;
+    const lv = LV[n % 6];
+    let body = `step=${n} loss=${(2.5 * Math.exp(-n / 50000)).toFixed(4)} lr=3e-5`;
+    if (i === 9) body = `step=${n} dump=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx… <span class="trunc">[展開 8,012 字元]</span>`;
+    if (i === 16) body = `&lt;tensor shape=[32, 4096]&gt; loss=${(1 / n).toFixed(6)}`;
+    lines += `<div class="ln"><span class="no">${n.toLocaleString()}</span><span class="lv-${lv}">${lv.padEnd(5)}</span> ${body}</div>`;
+}
+document.getElementById('log-slot').outerHTML = `
+    <div class="card log-wrap">
+        <div class="banner warn">⚠ 連線中斷，正在重新連線…（第 2 次嘗試）　已收到的 log 會保留</div>
+        <div class="log-toolbar">
+            <div class="field placeholder" style="width:280px;height:34px">🔍 搜尋 log</div>
+            <span class="filter-chip">全部等級 ▾</span>
+            <span style="flex:1"></span>
+            <span class="muted small">48,235 行 · 已暫停自動捲動</span>
+            <button class="btn outlined" style="height:32px">下載</button>
+        </div>
+        <div class="log">${lines}</div>
+        <div class="jump">↓ 回到最新 · 1,284 行新內容</div>
+    </div>`;
+
+// ---- 06 停止 ----
+document.getElementById('s06a').innerHTML = detail();
+document.getElementById('s06a').insertAdjacentHTML('beforeend', `
+    <div class="scrim"><div class="dialog">
+        <div class="d-body">
+            <h2>停止 Job？</h2>
+            <p>停止後 Job 會結束執行並釋放 GPU，此操作無法復原。</p>
+            <div class="target">${chip('RUNNING')}<b>llama3-finetune-00003</b><span class="muted">· 4 GPU</span></div>
+        </div>
+        <div class="d-actions"><button class="btn text">取消</button><button class="btn danger">停止 Job</button></div>
+    </div></div>`);
+document.getElementById('s06b').innerHTML = detail();
+document.getElementById('s06b').insertAdjacentHTML('beforeend', `
+    <div class="snack">
+        <span style="color:var(--error);font-size:18px">⚠</span>
+        <div><b>無法停止 llama3-finetune-00003</b><span class="muted">排程器沒有回應，Job 仍在執行中。請稍後再試。</span></div>
+        <span class="x">✕</span>
+    </div>`);
+</script>
+</body>
+</html>
