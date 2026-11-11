@@ -1,0 +1,236 @@
+openapi: 3.0.3
+info:
+    title: GPU Job API (mock)
+    version: 1.0.0
+    description: |
+        GPU 叢集管理平台的 Job API。
+
+        ## 回應格式
+        所有 JSON 回應都包在同一個信封裡：
+
+        ```json
+        { "data": <payload 或 null>, "error": null 或 { "code": "...", "message": "..." } }
+        ```
+
+        ## 錯誤回應
+        - 參數錯誤、找不到資源等以 4xx/5xx 狀態碼回傳，body 為上述信封。
+        - **業務邏輯錯誤**（例如對已結束的 Job 執行停止）以 HTTP 200 回傳，`error` 不為 null。
+        - 平台前面有一層 reverse proxy，偶爾會回傳它自己的錯誤頁。
+
+        ## 長連線
+        SSE 端點經過 reverse proxy，長連線可能被中斷。
+servers:
+    - url: /api/v1
+paths:
+    /nodes:
+        get:
+            summary: 列出 GPU 節點
+            responses:
+                '200':
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                allOf:
+                                    - $ref: '#/components/schemas/Envelope'
+                                    - type: object
+                                      properties:
+                                          data:
+                                              type: array
+                                              items: { $ref: '#/components/schemas/Node' }
+    /jobs:
+        get:
+            summary: 列出 Job（分頁）
+            parameters:
+                - { name: q, in: query, schema: { type: string }, description: 依名稱或擁有者搜尋 }
+                - name: status
+                  in: query
+                  description: 以逗號分隔多個狀態，例如 `RUNNING,FAILED`
+                  schema: { type: string }
+                - { name: node, in: query, schema: { type: string }, description: 節點 name }
+                - name: sort
+                  in: query
+                  description: '`<field>:<asc|desc>`，field 可為 createdAt、name、status、gpuCount。預設 `createdAt:desc`'
+                  schema: { type: string }
+                - { name: page, in: query, schema: { type: integer, minimum: 1, default: 1 } }
+                - {
+                      name: pageSize,
+                      in: query,
+                      schema: { type: integer, minimum: 1, maximum: 200, default: 50 },
+                  }
+            responses:
+                '200':
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                allOf:
+                                    - $ref: '#/components/schemas/Envelope'
+                                    - type: object
+                                      properties:
+                                          data:
+                                              type: object
+                                              properties:
+                                                  items:
+                                                      type: array
+                                                      items: { $ref: '#/components/schemas/Job' }
+                                                  total: { type: integer }
+                                                  page: { type: integer }
+                                                  pageSize: { type: integer }
+                '400': { $ref: '#/components/responses/Error' }
+    /jobs/{id}:
+        parameters:
+            - $ref: '#/components/parameters/JobId'
+        get:
+            summary: 取得單一 Job
+            responses:
+                '200':
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                allOf:
+                                    - $ref: '#/components/schemas/Envelope'
+                                    - type: object
+                                      properties:
+                                          data: { $ref: '#/components/schemas/Job' }
+                '404': { $ref: '#/components/responses/Error' }
+    /jobs/{id}/metrics:
+        parameters:
+            - $ref: '#/components/parameters/JobId'
+            - name: range
+              in: query
+              schema: { type: string, enum: ['15m', '1h', '6h'], default: '15m' }
+        get:
+            summary: 取得 Job 的 GPU 使用率時間序列
+            description: metrics 來自獨立的監控服務，可用性低於 Job API。
+            responses:
+                '200':
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                allOf:
+                                    - $ref: '#/components/schemas/Envelope'
+                                    - type: object
+                                      properties:
+                                          data:
+                                              type: object
+                                              properties:
+                                                  gpus:
+                                                      type: array
+                                                      items: { type: integer }
+                                                      description: GPU index 列表
+                                                  points:
+                                                      type: array
+                                                      items:
+                                                          type: object
+                                                          properties:
+                                                              ts:
+                                                                  {
+                                                                      type: string,
+                                                                      format: date-time,
+                                                                  }
+                                                              gpu:
+                                                                  type: array
+                                                                  description: 與 gpus 同順序
+                                                                  items:
+                                                                      type: object
+                                                                      properties:
+                                                                          util:
+                                                                              {
+                                                                                  type: integer,
+                                                                                  nullable: true,
+                                                                                  description: '0–100 (%)',
+                                                                              }
+                                                                          memUsedMiB:
+                                                                              {
+                                                                                  type: integer,
+                                                                                  nullable: true,
+                                                                              }
+                '404': { $ref: '#/components/responses/Error' }
+                '503': { $ref: '#/components/responses/Error' }
+    /jobs/{id}/stop:
+        parameters:
+            - $ref: '#/components/parameters/JobId'
+        post:
+            summary: 停止 Job
+            description: 成功時 Job 進入 STOPPING，數秒後變成 STOPPED。
+            responses:
+                '200':
+                    description: 成功時 data 為更新後的 Job；失敗時 error 不為 null
+                    content:
+                        application/json:
+                            schema:
+                                allOf:
+                                    - $ref: '#/components/schemas/Envelope'
+                                    - type: object
+                                      properties:
+                                          data: { $ref: '#/components/schemas/Job' }
+                '404': { $ref: '#/components/responses/Error' }
+    /jobs/{id}/logs/stream:
+        parameters:
+            - $ref: '#/components/parameters/JobId'
+        get:
+            summary: 即時 log（Server-Sent Events）
+            description: |
+                每一行 log 是一個事件，`id` 為遞增序號，`data` 為該行文字（可能含 ANSI 色碼）。
+                帶 `Last-Event-ID` header（或 `lastEventId` query）時，從該序號的下一行開始傳送；
+                否則從第一行開始。Job 已結束時，送完全部 log 後送出 `event: end` 並關閉連線。
+            parameters:
+                - { name: Last-Event-ID, in: header, schema: { type: string } }
+                - { name: lastEventId, in: query, schema: { type: string } }
+            responses:
+                '200':
+                    description: text/event-stream
+                    content:
+                        text/event-stream:
+                            schema: { type: string }
+components:
+    parameters:
+        JobId:
+            name: id
+            in: path
+            required: true
+            schema: { type: integer, format: int64 }
+    responses:
+        Error:
+            description: 錯誤
+            content:
+                application/json:
+                    schema: { $ref: '#/components/schemas/Envelope' }
+    schemas:
+        Envelope:
+            type: object
+            required: [data, error]
+            properties:
+                data: {}
+                error:
+                    type: object
+                    nullable: true
+                    properties:
+                        code: { type: string }
+                        message: { type: string }
+        JobStatus:
+            type: string
+            enum: [PENDING, RUNNING, STOPPING, STOPPED, SUCCEEDED, FAILED]
+        Node:
+            type: object
+            properties:
+                name: { type: string }
+                displayName: { type: string }
+                gpuModel: { type: string }
+                gpuCount: { type: integer }
+        Job:
+            type: object
+            properties:
+                id: { type: integer, format: int64 }
+                name: { type: string }
+                status: { $ref: '#/components/schemas/JobStatus' }
+                node: { type: string, nullable: true, description: 尚未排程時為 null }
+                gpuCount: { type: integer }
+                owner: { type: string }
+                description: { type: string, description: 使用者輸入的純文字 }
+                createdAt: { type: string, format: date-time }
+                startedAt: { type: string, format: date-time, nullable: true }
+                finishedAt: { type: string, format: date-time, nullable: true }

@@ -1,0 +1,17 @@
+{
+    "app": {
+        "title": "GPU Job Monitor",
+        "language": "Language"
+    },
+    "jobs": {
+        "title": "Jobs",
+        "status": {
+            "PENDING": "Pending",
+            "RUNNING": "Running",
+            "STOPPING": "Stopping",
+            "STOPPED": "Stopped",
+            "SUCCEEDED": "Succeeded",
+            "FAILED": "Failed"
+        }
+    }
+}

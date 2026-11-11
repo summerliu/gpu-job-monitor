@@ -1,0 +1,17 @@
+{
+    "app": {
+        "title": "GPU Job 監控",
+        "language": "語言"
+    },
+    "jobs": {
+        "title": "Job 列表",
+        "status": {
+            "PENDING": "等待中",
+            "RUNNING": "執行中",
+            "STOPPING": "停止中",
+            "STOPPED": "已停止",
+            "SUCCEEDED": "已完成",
+            "FAILED": "失敗"
+        }
+    }
+}
