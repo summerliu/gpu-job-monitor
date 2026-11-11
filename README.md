@@ -4,7 +4,7 @@
 
 ## 啟動
 
-需要 Node.js 22 以上。
+需要 Node.js 22 以上與一般瀏覽器，不需要 GPU：所有 Job、GPU 使用率與 log 都由 mock backend 產生。
 
 ```bash
 npm install
