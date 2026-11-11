@@ -1,4 +1,4 @@
-import { getJson } from './client';
+import { getJson, postJson } from './client';
 import type { Job, JobStatus, Node, Paged } from './types';
 
 export interface ListJobsParams {
@@ -23,4 +23,8 @@ export function getJob(id: number) {
 
 export function listNodes() {
     return getJson<Node[]>('/nodes');
+}
+
+export function stopJob(id: number) {
+    return postJson<Job>(`/jobs/${id}/stop`);
 }
