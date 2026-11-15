@@ -3,7 +3,8 @@
 export type JobStatus = 'PENDING' | 'RUNNING' | 'STOPPING' | 'STOPPED' | 'SUCCEEDED' | 'FAILED';
 
 export interface Job {
-    id: number;
+    // 後端是 int64，JS number 會在 2^53 後失去精度，因此以字串表示（見 src/api/client.ts）。
+    id: string;
     name: string;
     status: JobStatus;
     node: string | null;
@@ -37,4 +38,26 @@ export interface ApiError {
 export interface Envelope<T> {
     data: T | null;
     error: ApiError | null;
+}
+
+export type MetricsRange = '15m' | '1h' | '6h';
+
+export interface GpuPoint {
+    util: number | null;
+    memUsedMiB: number | null;
+}
+
+export interface MetricsPoint {
+    ts: string;
+    gpu: GpuPoint[];
+}
+
+export interface JobMetrics {
+    gpus: number[];
+    points: MetricsPoint[];
+}
+
+export interface LogLine {
+    seq: number;
+    text: string;
 }

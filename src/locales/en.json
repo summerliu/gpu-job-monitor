@@ -3,8 +3,28 @@
         "title": "GPU Job Monitor",
         "language": "Language"
     },
+    "common": {
+        "cancel": "Cancel",
+        "retry": "Retry"
+    },
+    "time": {
+        "secondAgo": "{{count}}s ago",
+        "minuteAgo": "{{count}}m ago",
+        "hourAgo": "{{count}}h ago",
+        "dayAgo": "{{count}}d ago"
+    },
     "jobs": {
         "title": "Jobs",
+        "total": "{{count}} total",
+        "liveUpdatedAgo": "Auto-refresh every 5s · {{time}}",
+        "loadErrorTitle": "Couldn't load the job list",
+        "loadErrorBody": "The server isn't responding right now. Please try again shortly.",
+        "noResultsTitle": "No jobs match your filters",
+        "noResultsBody": "Try widening your search or clearing filters.",
+        "noDataTitle": "No jobs yet",
+        "noDataBody": "No jobs have been created on this cluster yet.",
+        "unscheduled": "Unscheduled",
+        "refreshFailed": "Failed to refresh the list: {{message}} (showing the last known data)",
         "status": {
             "PENDING": "Pending",
             "RUNNING": "Running",
@@ -12,6 +32,72 @@
             "STOPPED": "Stopped",
             "SUCCEEDED": "Succeeded",
             "FAILED": "Failed"
+        },
+        "filters": {
+            "searchPlaceholder": "Search name or owner",
+            "addStatus": "+ Status",
+            "allNodes": "All nodes",
+            "clear": "Clear filters"
+        },
+        "columns": {
+            "name": "Name",
+            "status": "Status",
+            "node": "Node",
+            "gpuCount": "GPU",
+            "owner": "Owner",
+            "createdAt": "Created"
+        }
+    },
+    "jobDetail": {
+        "loadErrorTitle": "Couldn't load this job",
+        "stop": "Stop job",
+        "gpuCount": "{{count}} GPU",
+        "duration": "{{hours}}h {{minutes}}m",
+        "stopSucceeded": "Stop request sent",
+        "stopFailed": "Couldn't stop the job: {{message}}",
+        "stopDialog": {
+            "title": "Stop this job?",
+            "body": "Stopping the job will end it and release its GPUs. This cannot be undone.",
+            "confirm": "Stop job",
+            "stopping": "Stopping…"
+        },
+        "tabs": {
+            "overview": "Overview",
+            "logs": "Live logs"
+        },
+        "info": {
+            "title": "Basic info",
+            "id": "ID",
+            "copy": "Copy",
+            "node": "Node",
+            "gpuCount": "GPU count",
+            "owner": "Owner",
+            "createdAt": "Created",
+            "startedAt": "Started",
+            "duration": "Elapsed",
+            "description": "Description"
+        },
+        "chart": {
+            "title": "GPU utilization",
+            "pendingTitle": "Data will appear once the job starts running",
+            "unavailableTitle": "GPU utilization is temporarily unavailable",
+            "unavailableBody": "The monitoring service isn't responding. The job itself is unaffected.",
+            "noDataYet": "No data yet",
+            "gpuLabel": "GPU {{index}}",
+            "range": {
+                "15m": "15 min",
+                "1h": "1 hour",
+                "6h": "6 hours"
+            }
+        },
+        "logs": {
+            "reconnecting": "Connection lost, reconnecting… received logs are kept",
+            "connectionError": "Couldn't connect to the log stream",
+            "lineCount": "{{count}} lines",
+            "ended": "Job finished — all logs delivered",
+            "expand": "Expand ({{count}} chars)",
+            "jumpToLatest": "↓ Jump to latest · {{count}} new lines",
+            "fullLineTitle": "Line {{seq}}"
         }
     }
 }

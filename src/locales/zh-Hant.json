@@ -3,8 +3,28 @@
         "title": "GPU Job 監控",
         "language": "語言"
     },
+    "common": {
+        "cancel": "取消",
+        "retry": "重試"
+    },
+    "time": {
+        "secondAgo": "{{count}} 秒前",
+        "minuteAgo": "{{count}} 分鐘前",
+        "hourAgo": "{{count}} 小時前",
+        "dayAgo": "{{count}} 天前"
+    },
     "jobs": {
         "title": "Job 列表",
+        "total": "共 {{count}} 筆",
+        "liveUpdatedAgo": "每 5 秒自動更新 · {{time}}",
+        "loadErrorTitle": "無法載入 Job 列表",
+        "loadErrorBody": "伺服器暫時沒有回應，請稍後再試。若持續發生，請聯絡系統管理員。",
+        "noResultsTitle": "沒有符合條件的 Job",
+        "noResultsBody": "目前的篩選條件沒有找到任何 Job，試著放寬條件。",
+        "noDataTitle": "目前沒有任何 Job",
+        "noDataBody": "叢集上還沒有建立任何 Job。",
+        "unscheduled": "未排程",
+        "refreshFailed": "更新列表失敗：{{message}}（顯示的是上一次的資料）",
         "status": {
             "PENDING": "等待中",
             "RUNNING": "執行中",
@@ -12,6 +32,72 @@
             "STOPPED": "已停止",
             "SUCCEEDED": "已完成",
             "FAILED": "失敗"
+        },
+        "filters": {
+            "searchPlaceholder": "搜尋名稱或擁有者",
+            "addStatus": "＋ 狀態",
+            "allNodes": "全部節點",
+            "clear": "清除篩選"
+        },
+        "columns": {
+            "name": "名稱",
+            "status": "狀態",
+            "node": "節點",
+            "gpuCount": "GPU",
+            "owner": "擁有者",
+            "createdAt": "建立時間"
+        }
+    },
+    "jobDetail": {
+        "loadErrorTitle": "無法載入 Job",
+        "stop": "停止 Job",
+        "gpuCount": "{{count}} GPU",
+        "duration": "{{hours}} 小時 {{minutes}} 分",
+        "stopSucceeded": "已送出停止請求",
+        "stopFailed": "無法停止 Job：{{message}}",
+        "stopDialog": {
+            "title": "停止 Job？",
+            "body": "停止後 Job 會結束執行並釋放 GPU，此操作無法復原。",
+            "confirm": "停止 Job",
+            "stopping": "停止中…"
+        },
+        "tabs": {
+            "overview": "總覽",
+            "logs": "即時 Log"
+        },
+        "info": {
+            "title": "基本資訊",
+            "id": "ID",
+            "copy": "複製",
+            "node": "節點",
+            "gpuCount": "GPU 數",
+            "owner": "擁有者",
+            "createdAt": "建立時間",
+            "startedAt": "開始時間",
+            "duration": "已執行",
+            "description": "描述"
+        },
+        "chart": {
+            "title": "GPU 使用率",
+            "pendingTitle": "Job 開始執行後才會有資料",
+            "unavailableTitle": "GPU 使用率暫時無法取得",
+            "unavailableBody": "監控服務沒有回應，Job 本身不受影響。",
+            "noDataYet": "尚無資料",
+            "gpuLabel": "GPU {{index}}",
+            "range": {
+                "15m": "15 分鐘",
+                "1h": "1 小時",
+                "6h": "6 小時"
+            }
+        },
+        "logs": {
+            "reconnecting": "連線中斷，正在重新連線…已收到的 log 會保留",
+            "connectionError": "無法連線到 log 串流",
+            "lineCount": "{{count}} 行",
+            "ended": "Job 已結束，log 已全部送達",
+            "expand": "展開（{{count}} 字元）",
+            "jumpToLatest": "↓ 回到最新 · {{count}} 行新內容",
+            "fullLineTitle": "第 {{seq}} 行"
         }
     }
 }

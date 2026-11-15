@@ -1,6 +1,7 @@
 import { AppBar, Box, Container, MenuItem, Select, Toolbar, Typography } from '@mui/material';
 import { useTranslation } from 'react-i18next';
 import { Outlet } from 'react-router';
+import NotificationsSnackbar from '@/components/NotificationsSnackbar';
 
 export default function AppLayout() {
     const { t, i18n } = useTranslation();
@@ -27,6 +28,7 @@ export default function AppLayout() {
             <Container maxWidth='xl' sx={{ py: 3 }}>
                 <Outlet />
             </Container>
+            <NotificationsSnackbar />
         </Box>
     );
 }
