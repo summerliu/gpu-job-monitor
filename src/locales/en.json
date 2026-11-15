@@ -35,7 +35,7 @@
         },
         "filters": {
             "searchPlaceholder": "Search name or owner",
-            "addStatus": "+ Status",
+            "addStatus": "Status",
             "allNodes": "All nodes",
             "clear": "Clear filters"
         },
@@ -50,6 +50,7 @@
     },
     "jobDetail": {
         "loadErrorTitle": "Couldn't load this job",
+        "loadErrorBody": "The server isn't responding right now. Please try again shortly.",
         "stop": "Stop job",
         "gpuCount": "{{count}} GPU",
         "duration": "{{hours}}h {{minutes}}m",

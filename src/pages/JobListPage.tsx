@@ -55,7 +55,7 @@ export default function JobListPage() {
     const nodes = useNodes();
 
     const filters = useMemo(() => parseFilters(searchParams), [searchParams]);
-    const { jobs, total, status, error, isFetching, lastUpdatedAt, refetch } = useJobs(filters);
+    const { jobs, total, status, isFetching, lastUpdatedAt, refetch } = useJobs(filters);
 
     const updateFilters = (patch: Partial<typeof filters>) => {
         setSearchParams(filtersToSearchParams({ ...filters, ...patch }));
@@ -91,7 +91,7 @@ export default function JobListPage() {
                     <EmptyState
                         icon={<ErrorOutlineIcon color='error' sx={{ fontSize: 34 }} />}
                         title={t('jobs.loadErrorTitle')}
-                        description={error?.message ?? t('jobs.loadErrorBody')}
+                        description={t('jobs.loadErrorBody')}
                         actionLabel={t('common.retry')}
                         onAction={refetch}
                     />

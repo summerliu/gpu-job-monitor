@@ -35,7 +35,7 @@
         },
         "filters": {
             "searchPlaceholder": "搜尋名稱或擁有者",
-            "addStatus": "＋ 狀態",
+            "addStatus": "狀態",
             "allNodes": "全部節點",
             "clear": "清除篩選"
         },
@@ -50,6 +50,7 @@
     },
     "jobDetail": {
         "loadErrorTitle": "無法載入 Job",
+        "loadErrorBody": "伺服器暫時沒有回應，請稍後再試。若持續發生，請聯絡系統管理員。",
         "stop": "停止 Job",
         "gpuCount": "{{count}} GPU",
         "duration": "{{hours}} 小時 {{minutes}} 分",

@@ -39,7 +39,7 @@ export default function JobDetailPage() {
     const { t } = useTranslation();
     const { jobId } = useParams<{ jobId: string }>();
     const nodes = useNodes();
-    const { job, status, error, isStopping, refetch, stop } = useJob(jobId!);
+    const { job, status, isStopping, refetch, stop } = useJob(jobId!);
     const [tab, setTab] = useState<Tab_>('overview');
     const [logsEverVisited, setLogsEverVisited] = useState(false);
     const [stopDialogOpen, setStopDialogOpen] = useState(false);
@@ -59,7 +59,7 @@ export default function JobDetailPage() {
             <EmptyState
                 icon={<ErrorOutlineIcon color='error' sx={{ fontSize: 34 }} />}
                 title={t('jobDetail.loadErrorTitle')}
-                description={error?.message}
+                description={t('jobDetail.loadErrorBody')}
                 actionLabel={t('common.retry')}
                 onAction={refetch}
             />

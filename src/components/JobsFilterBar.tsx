@@ -88,6 +88,7 @@ export default function JobsFilterBar({ filters, nodes, onChange, onClear }: Pro
             {availableStatuses.length > 0 && (
                 <>
                     <Chip
+                        data-testid='add-status-filter'
                         icon={<AddIcon fontSize='small' />}
                         label={t('jobs.filters.addStatus')}
                         size='small'

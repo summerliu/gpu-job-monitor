@@ -5,7 +5,7 @@ test.describe('job list filters', () => {
         await page.goto('/jobs');
         await page.locator('table').waitFor();
 
-        await page.getByText('＋ 狀態').click();
+        await page.getByTestId('add-status-filter').click();
         await page.getByRole('menuitem', { name: '執行中' }).click();
 
         await expect(page).toHaveURL(/status=RUNNING/);
